@@ -1,10 +1,11 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class Orbital : MonoBehaviour
 {
     public float speed = 50f;
     public float radius = 1.5f;
-    public Atom atom;
+    [FormerlySerializedAs("atom")] public Particle particle;
     public int amountOfElectrons;
     public GameObject electronPrefab;
 
@@ -19,9 +20,9 @@ public class Orbital : MonoBehaviour
             electron.transform.localPosition = offset;
         }
 
-        if (atom)
+        if (particle)
         {
-            transform.parent = atom.transform;
+            transform.parent = particle.transform;
             transform.localPosition = Vector3.zero;
         }
     }

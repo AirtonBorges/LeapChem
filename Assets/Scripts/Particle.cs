@@ -4,21 +4,20 @@ using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
 using Leap.PhysicalHands;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Serialization;
 using Random = UnityEngine.Random;
 
-public class Atom : MonoBehaviour
+public class Particle : MonoBehaviour
 {
     static float _phi = Mathf.PI * (3f - Mathf.Sqrt(5f));
     static float _pi2 = Mathf.PI * 2;
 
     public int Id { get; set; }
-    [FormerlySerializedAs("rigidbody")]
-    public Rigidbody myRigidbody;
-    [CanBeNull] public Atom ParentAtom { get; set; }
-    public List<Atom> particles = new();
-    public IgnorePhysicalHands ignorePhysicalHands;
+    [CanBeNull] public Particle ParentParticle { get; set; }
+    public List<Particle> particles = new();
+    // public IgnorePhysicalHands ignorePhysicalHands;
     public Elemento Elemento;
 
     private bool _isMerging;
@@ -40,15 +39,8 @@ public class Atom : MonoBehaviour
 
     public void Start()
     {
-        myRigidbody = GetComponent<Rigidbody>();
-        if (myRigidbody)
-        {
-            myRigidbody.isKinematic = false;
-        }
-
-        Id = Random.Range(1, 50000);
-        KindOfParticle = (EKindOfParticle)Random.Range(0, 2);
-
+        Id = Random.Range(1, 50000); 
+        // KindOfParticle = (EKindOfParticle)Random.Range(0, 2);
         Elemento = Table.Particles[AmountOfProtons];
     }
 
@@ -97,7 +89,7 @@ public class Atom : MonoBehaviour
         if (!other.gameObject.CompareTag("Glueable"))
             return;
 
-        var otherAtom = other.gameObject.GetComponent<Atom>();
+        var otherAtom = other.gameObject.GetComponentInChildren<Particle>();
         if (otherAtom == null)
             return;
 
@@ -110,7 +102,6 @@ public class Atom : MonoBehaviour
         if (thisRoot._isMerging || otherRoot._isMerging)
             return;
 
-        DisableRigidBodies(thisRoot, otherRoot);
 
         var particlesCount = thisRoot.AmountOfProtons + otherRoot.AmountOfProtons;
         if (particlesCount > 118) // pegar de um singleton
@@ -119,8 +110,6 @@ public class Atom : MonoBehaviour
             return;
         }
 
-        thisRoot.ignorePhysicalHands.DisableAllGrabbing = true;
-        otherRoot.ignorePhysicalHands.DisableAllGrabbing = true;
         if (thisRoot.particles.Count > otherRoot.particles.Count)
         {
             thisRoot.Absorb(otherRoot);
@@ -133,23 +122,6 @@ public class Atom : MonoBehaviour
             otherRoot.ArrangeParticles();
             otherRoot.MorphSize();
         }
-        thisRoot.ignorePhysicalHands.DisableAllGrabbing = false;
-        otherRoot.ignorePhysicalHands.DisableAllGrabbing = false;
-
-        return;
-
-        void DisableRigidBodies(Atom atom, Atom otherRoot1)
-        {
-            if (atom.myRigidbody != null)
-            {
-                atom.myRigidbody.isKinematic = true;
-            }
-
-            if (otherRoot1.myRigidbody != null)
-            {
-                otherRoot1.myRigidbody.isKinematic = true;
-            }
-        }
     }
 
     private void MorphSize()
@@ -157,12 +129,15 @@ public class Atom : MonoBehaviour
         var total = particles.Count;
         var targetScale = total switch
         {
-            < 10 => 0.5f,
-            < 20 => 1f,
-            < 50 => 1.5f,
-            < 100 => 2f,
-            _ => 3f
+            < 50 => 1f,
+            < 100 => 0.8f,
+            _ => 0.5f
         };
+
+        foreach (var p in particles)
+        {
+            p.transform.localScale = Vector3.one;
+        }
 
         StartCoroutine(MorphSizeCoroutine(targetScale));
     }
@@ -195,45 +170,42 @@ public class Atom : MonoBehaviour
         }
     }
 
-    private void Absorb(Atom otherAtom)
+    private void Absorb(Particle otherParticle)
     {
         _isMerging = true;
-        otherAtom._isMerging = true;
+        otherParticle._isMerging = true;
     
-        if (particles.Any(p => p.Id == otherAtom.Id))
+        if (particles.Any(p => p.Id == otherParticle.Id))
             return;
     
-        if (otherAtom.particles.Any(p => p.Id == Id))
+        if (otherParticle.particles.Any(p => p.Id == Id))
             return;
     
-        var otherRigidbody = otherAtom.GetComponent<Rigidbody>();
-        if (otherRigidbody != null)
-            Destroy(otherRigidbody);
-    
-        var canvas = otherAtom.GetComponentInChildren<Canvas>();
-        if (canvas != null)
+        var canvas = otherParticle.GetComponentInChildren<Canvas>();
+        if (canvas)
             canvas.enabled = false;
     
-        otherAtom.transform.parent = transform;
-        otherAtom.ParentAtom = this;
-        particles.Add(otherAtom);
+        otherParticle.transform.parent = transform;
+        otherParticle.ParentParticle = this;
+        particles.Add(otherParticle);
     
-        foreach (var particle in otherAtom.particles)
+        foreach (var particle in otherParticle.particles)
         {
-            particle.ParentAtom = null;
+            particle.ParentParticle = null;
+            particle.transform.localScale = Vector3.one;
             Absorb(particle);
         }
     
-        otherAtom.particles.Clear();
-        otherAtom._isMerging = false;
+        otherParticle.particles.Clear();
+        otherParticle._isMerging = false;
         _isMerging = false;
     }
 
-    private Atom GetParentAtom(Atom atom)
+    private Particle GetParentAtom(Particle particle)
     {
-        var parentAtom = atom.ParentAtom;
+        var parentAtom = particle.ParentParticle;
         if (parentAtom == null)
-            return atom;
+            return particle;
 
         parentAtom = GetParentAtom(parentAtom);
         return parentAtom;

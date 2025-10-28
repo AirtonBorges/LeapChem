@@ -1,15 +1,16 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class ParticleColor : MonoBehaviour
 {
-    public Atom atom;
+    [FormerlySerializedAs("atom")] public Particle particle;
     public Material protonMaterial;
     public Material neutronMaterial;
     private Renderer _particleRenderer;
 
     private void Start()
     {
-        if (atom == null)
+        if (particle == null)
         {
             Debug.LogError("Atom reference is not set.");
             return;
@@ -24,7 +25,7 @@ public class ParticleColor : MonoBehaviour
 
     private void Update()
     {
-        _particleRenderer.material = atom.KindOfParticle switch
+        _particleRenderer.material = particle.KindOfParticle switch
         {
             EKindOfParticle.Proton => protonMaterial,
             EKindOfParticle.Neutron => neutronMaterial,

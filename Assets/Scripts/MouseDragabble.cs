@@ -1,4 +1,6 @@
+using System;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 public class MouseDraggable : MonoBehaviour 
 {
@@ -18,4 +20,11 @@ public class MouseDraggable : MonoBehaviour
         transform.position = curPosition;
     }
 
+    private void OnMouseOver()
+    {
+        var teste = gameObject.GetComponent<Atom>();
+        
+        var gameLogic = FindAnyObjectByType<GameLogic>();
+        gameLogic.MostrarDescricao(teste);
+    }
 }
