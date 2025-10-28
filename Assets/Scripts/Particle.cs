@@ -19,6 +19,7 @@ public class Atom : MonoBehaviour
     [CanBeNull] public Atom ParentAtom { get; set; }
     public List<Atom> particles = new();
     public IgnorePhysicalHands ignorePhysicalHands;
+    public Elemento Elemento;
 
     private bool _isMerging;
 
@@ -27,6 +28,15 @@ public class Atom : MonoBehaviour
         + (KindOfParticle == EKindOfParticle.Proton ? 1 : 0);
     public int AmountOfNeutrons => particles.Count(p => p.KindOfParticle == EKindOfParticle.Neutron)
         + (KindOfParticle == EKindOfParticle.Neutron ? 1 : 0);
+
+    public float radius => particles.Count switch
+    {
+        < 10 => 0.5f,
+        < 20 => 1f,
+        < 50 => 1.5f,
+        < 100 => 2f,
+        _ => 3f
+    };
 
     public void Start()
     {
@@ -38,6 +48,13 @@ public class Atom : MonoBehaviour
 
         Id = Random.Range(1, 50000);
         KindOfParticle = (EKindOfParticle)Random.Range(0, 2);
+
+        Elemento = Table.Particles[AmountOfProtons];
+    }
+
+    public void Update()
+    {
+        Elemento = Table.Particles[AmountOfProtons];
     }
 
     // https://stackoverflow.com/questions/9600801/evenly-distributing-n-points-on-a-sphere
@@ -108,11 +125,13 @@ public class Atom : MonoBehaviour
         {
             thisRoot.Absorb(otherRoot);
             thisRoot.ArrangeParticles();
+            thisRoot.MorphSize();
         }
         else
         {
             otherRoot.Absorb(thisRoot);
             otherRoot.ArrangeParticles();
+            otherRoot.MorphSize();
         }
         thisRoot.ignorePhysicalHands.DisableAllGrabbing = false;
         otherRoot.ignorePhysicalHands.DisableAllGrabbing = false;
@@ -132,10 +151,11 @@ public class Atom : MonoBehaviour
             }
         }
     }
-    
-    public void ArrangeParticles()
+
+    private void MorphSize()
     {
-        var radius = particles.Count switch
+        var total = particles.Count;
+        var targetScale = total switch
         {
             < 10 => 0.5f,
             < 20 => 1f,
@@ -144,6 +164,28 @@ public class Atom : MonoBehaviour
             _ => 3f
         };
 
+        StartCoroutine(MorphSizeCoroutine(targetScale));
+    }
+    
+    private IEnumerator MorphSizeCoroutine(float targetScale)
+    {
+        var startScale = transform.localScale.x;
+        var elapsed = 0f;
+        var duration = 0.3f;
+
+        while (elapsed < duration)
+        {
+            var newScale = Mathf.Lerp(startScale, targetScale, elapsed / duration);
+            transform.localScale = new Vector3(newScale, newScale, newScale);
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        transform.localScale = new Vector3(targetScale, targetScale, targetScale);
+    }
+
+    public void ArrangeParticles()
+    {
         var total = particles.Count;
         for (var i = 0; i < total; i++)
         {
